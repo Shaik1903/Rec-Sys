@@ -1,0 +1,8 @@
+Pronunciation Exercise:
+Vowel Sounds:
+
+Exercise: Identify the vowel sound in the word.
+Name: Vowel Sound Identifier
+Difficulty: Beginner
+Focus: Vowel sounds
+Description: Recognize and select the correct vowel sound in spoken words.

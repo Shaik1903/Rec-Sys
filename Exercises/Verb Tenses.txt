@@ -1,0 +1,7 @@
+Grammar Exercises:
+Verb Tenses:
+Exercise: Sentence correction (choose the right tense).
+Name: Tense Transformer
+Difficulty: Beginner
+Focus: Verb tenses
+Description: Correct sentences by choosing the appropriate verb tense.

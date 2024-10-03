@@ -1,0 +1,8 @@
+Grammar Exercise:
+Articles Exercise:
+
+Exercise: Fill in the blanks with the right article.
+Name: Article Adder
+Difficulty: Beginner
+Focus: Articles
+Description: Practice inserting the correct articles ("a," "an," "the") in various sentences.
