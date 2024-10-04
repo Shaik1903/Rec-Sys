@@ -9,8 +9,8 @@ from langchain_core.prompts import PromptTemplate
 import getpass
 import os
 
-class Classifier:
-    def __init__(self, api_key : str = "AIzaSyCPfIdMffhoR2nxre5pmCFuYmvEI6G7oyY", model_name: str = "gemini-1.5-pro"):
+class Recommender:
+    def __init__(self, api_key: str, path: str = "Exercises/", glob_pattern: str = "**/*.txt", model_name: str = "gemini-1.5-pro"):
         
         # Configure API key
         self.api_key = api_key
@@ -19,8 +19,20 @@ class Classifier:
         if "GOOGLE_API_KEY" not in os.environ:
             os.environ["GOOGLE_API_KEY"] = self.api_key
         
+        # Initialize LLM
         self.llm = ChatGoogleGenerativeAI(model=model_name,temperature=0.0, google_api_key=self.api_key, max_tokens=None)
-        
+
+        # Load documents
+        self.loader = DirectoryLoader(path=path, glob=glob_pattern)
+        self.pages = self.loader.load()
+
+        # Embedding model and vector store
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        self.vectorstore = Chroma.from_documents(
+            documents=self.pages, 
+            embedding=self.embeddings
+        )
+
         # Templates for classification, correction, and exercise recommendation
         self.classifier_template = '''
 Imagine you are an expert in English, and your job is to classify the errors in the given sentence into specific categories and sub-categories based on the following:
@@ -66,40 +78,6 @@ Expected output:
 "She has many friends."
 '''
 
-
-        # Initialize prompt templates
-        self.classifier_prompt_template = PromptTemplate.from_template(self.classifier_template)
-        self.correct_sentence_prompt_template = PromptTemplate.from_template(self.correct_sentence_template)
-
-    # Method to get classifier response
-    def get_classifier_response(self, user_input: str):
-        prompt = self.classifier_prompt_template.format(input=user_input)
-        response = self.llm.invoke(prompt)
-        return response.content
-
-    # Method to get corrected response
-    def get_corrected_response(self, user_input: str):
-        prompt = self.correct_sentence_prompt_template.format(input=user_input)
-        response = self.llm.invoke(prompt)
-        return response.content
-
-class Recommender:
-    def __init__(self,classifier_result, vectorstore, api_key: str = "AIzaSyCPfIdMffhoR2nxre5pmCFuYmvEI6G7oyY", model_name: str = "gemini-1.5-pro"):
-        
-        # Configure API key
-        self.api_key = api_key
-        self.vectorstore = vectorstore
-        genai.configure(api_key=self.api_key)
-        
-        if "GOOGLE_API_KEY" not in os.environ:
-            os.environ["GOOGLE_API_KEY"] = self.api_key
-        
-        # Initialize LLM
-        self.llm = ChatGoogleGenerativeAI(model=model_name,temperature=0.0, google_api_key=self.api_key, max_tokens=None)
-
-        self.d = self.vectorstore.similarity_search(classifier_result,k=1)                       # Example to retrive the contents using the Similarity search
-        self.exer = self.d[0].page_content
-
         self.exercise_recommender_template = '''
 Imagine you are an expert in language learning, and your job is to recommend exercises based on a user's demographics, mistake history, and preferred exercise type.
 
@@ -125,39 +103,16 @@ Naruto is ___ ninja who dreams of becoming Hokage.
 Luffy from "One Piece" set out to become ___ king of ___ pirates.
 After watching ___ episode of "Attack on Titan," I felt ___ sense of excitement.
 '''
-      
-        self.exercise_recommender_prompt_template = PromptTemplate.from_template(self.exercise_recommender_template)
 
-    
-    def get_exercise(self, user_ud: str, user_hist: str):
-        prompt = self.exercise_recommender_prompt_template.format(
-            user_demographic=user_ud, 
-            Mistake_history=user_hist, 
-            reco_exercise=self.exer
-        )
-        response = self.llm.invoke(prompt)
-        return response
-    
 
-# Load documents
-loader = DirectoryLoader(path="Exercises/", glob="**/*.txt")
-pages = loader.load()
-
-# Embedding model and vector store
-embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-vectorstore = Chroma.from_documents(
-            documents=pages, 
-            embedding=embeddings
-)
-
-aiko_ud = '''
+        self.aiko_ud = '''
     "name": "Aiko",
     "age": 22,
     "proficiency_level": "intermediate",
     "country": "Japan",
     "interests": ["anime", "movies", "technology", "fashion"],
 '''
-aiko_history = '''
+        self.aiko_history = '''
 Incorrect verb tense in conditional sentence (Grammar - Verb tenses)
 Subject-verb agreement error (Grammar - Subject-verb agreement)
 Used incorrect articles (Grammar - Articles)
@@ -166,3 +121,74 @@ Preposition misuse (Grammar - Prepositions)
 Inconsistent stress patterns (Pronunciation - Word stress)
 Mispronounced verb forms (Pronunciation - Consonant sounds)
 '''
+        self.lucas_ud = '''
+    "name": "Lucas",
+    "age": 28,
+    "proficiency_level": "beginner",
+    "country": "Brazil",
+    "interests": ["sports", "cooking", "movies", "travel"],
+'''
+
+        self.lucas_history = '''
+Used too many filler words like "um" and "uh" (Fluency - Filler words)
+Spoke too quickly, making it hard to follow (Fluency - Speaking speed)
+Hesitated frequently during speech (Fluency - Hesitation)
+Struggled with intonation during questions (Pronunciation - Intonation)
+Failed to pause appropriately between ideas (Fluency - Sentence linking)
+Used incorrect collocations that sounded awkward (Vocabulary - Collocations)
+Inconsistent stress patterns on keywords (Pronunciation - Word stress)
+'''
+
+        self.emma_ud = '''
+    "name": "Emma",
+    "age": 30,
+    "proficiency_level": "advanced",
+    "country": "United States",
+    "interests": ["music", "books", "technology"],
+'''
+
+        self.emma_history = '''
+Used repetitive vocabulary in discussion (Vocabulary - Word choice)
+Misused idiomatic expressions (Vocabulary - Idiomatic expressions)
+Mispronounced specific vocabulary terms (Pronunciation - Consonant sounds)
+Limited use of synonyms for variety (Vocabulary - Word choice)
+Failed to define unfamiliar words when used (Vocabulary - Academic vocabulary)
+Used jargon that confused the audience (Vocabulary - Word choice)
+Struggled to connect complex ideas smoothly (Fluency - Sentence linking)
+'''
+        # Initialize prompt templates
+        self.classifier_prompt_template = PromptTemplate.from_template(self.classifier_template)
+        self.correct_sentence_prompt_template = PromptTemplate.from_template(self.correct_sentence_template)
+        self.exercise_recommender_prompt_template = PromptTemplate.from_template(self.exercise_recommender_template)
+
+    # Method to get classifier response
+    def get_classifier_response(self, user_input: str):
+        prompt = self.classifier_prompt_template.format(input=user_input)
+        response = self.llm.invoke(prompt)
+        return response
+
+    # Method to get corrected response
+    def get_corrected_response(self, user_input: str):
+        prompt = self.correct_sentence_prompt_template.format(input=user_input)
+        response = self.llm.invoke(prompt)
+        return response
+
+    # Method to get exercise recommendation
+    def get_exercise(self, user_ud: str, user_hist: str, exer: str):
+        prompt = self.exercise_recommender_prompt_template.format(
+            user_demographic=user_ud, 
+            Mistake_history=user_hist, 
+            reco_exercise=exer
+        )
+        response = self.llm.invoke(prompt)
+        return response
+
+# Example:
+tool = Recommender(api_key="AIzaSyAHPpqUignpGcTI1ZfmXfcFcxlpKDtDSrQ")
+classifier_result = tool.get_classifier_response("I has a apple")
+correction_result = tool.get_corrected_response("I has a apple")
+exercise_result = tool.get_exercise(user_ud="Aiko, 22", user_hist="Verb tense issues", exer="Grammar practice")
+
+print(classifier_result)
+print(correction_result)
+print(correction_result)
