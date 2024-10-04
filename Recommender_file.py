@@ -9,8 +9,19 @@ from langchain_core.prompts import PromptTemplate
 import getpass
 import os
 
+api_key = "AIzaSyCPfIdMffhoR2nxre5pmCFuYmvEI6G7oyY"  # 1 pro
+# api_key = "AIzaSyB6qvwIDeJeBcQDYB1O_NmABoK9yGs-pEk" # 1.5pro
+# model_name = "gemini-1.0-pro"
+# model_name = "gemini-1.5-pro"
+model_name = "gemini-1.5-flash"
+
+genai.configure(api_key=api_key)
+        
+if "GOOGLE_API_KEY" not in os.environ:
+    os.environ["GOOGLE_API_KEY"] = api_key
+
 class Classifier:
-    def __init__(self, api_key : str = "AIzaSyCPfIdMffhoR2nxre5pmCFuYmvEI6G7oyY", model_name: str = "gemini-1.5-pro"):
+    def __init__(self, api_key : str = api_key, model_name: str = model_name):
         
         # Configure API key
         self.api_key = api_key
@@ -37,7 +48,7 @@ Instructions:
 - Identify the **category** and **sub-category** of the mistake as an English expert.
 - Output **only** the category and sub-category in the following format: 
 
-Category: [Category]  
+Mistake Category: [Category]  
 Sub-category: [Sub-category]
 
 ### Example:
@@ -45,7 +56,7 @@ Sub-category: [Sub-category]
 Input sentence: "She have many friends."
 
 Expected output:
-Category: Grammar  
+Mistake Category: Grammar  
 Sub-category: subject-verb agreement
 '''
 
@@ -84,7 +95,7 @@ Expected output:
         return response.content
 
 class Recommender:
-    def __init__(self,classifier_result, vectorstore, api_key: str = "AIzaSyCPfIdMffhoR2nxre5pmCFuYmvEI6G7oyY", model_name: str = "gemini-1.5-pro"):
+    def __init__(self,classifier_result, vectorstore, api_key: str = api_key, model_name: str = model_name):
         
         # Configure API key
         self.api_key = api_key
@@ -117,6 +128,7 @@ Instructions to follow:
 - Based on the user's demographics, mistake history, and preferred exercise type, only 1 exercise.
 - Output the exercise recommendation in a clear, concise format.
 - Output only the exercise 
+- Don't use any special symbols
 
 Here is an example case:
 Given the user demographics,history and exercise
@@ -136,7 +148,7 @@ After watching ___ episode of "Attack on Titan," I felt ___ sense of excitement.
             reco_exercise=self.exer
         )
         response = self.llm.invoke(prompt)
-        return response
+        return response.content
     
 
 # Load documents
