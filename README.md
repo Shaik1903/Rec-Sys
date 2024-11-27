@@ -1,7 +1,4 @@
 # Rec-Sys
-Assignment for the stimuler
-
-
 Install the requirements from requirements.txt - `pip install -r requirements.txt`
 experiments.Recommender_file.py contains all the necessay functions
 
